@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { clearToken, getToken } from './auth';
 
-export const api = axios.create({ baseURL: import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000' });
+export const api = axios.create({ baseURL: import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:8000', timeout: 35000 });
 
 api.interceptors.request.use((config) => {
   const token = getToken();

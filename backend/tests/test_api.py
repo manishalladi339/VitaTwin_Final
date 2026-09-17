@@ -61,3 +61,22 @@ def test_emergency_language_uses_safety_rule(client, account):
     assert response.status_code == 200
     assert response.json()["source"] == "safety-rule"
     assert "emergency" in response.json()["answer"].lower()
+
+
+def test_password_byte_limit(client):
+    response = client.post('/api/v1/auth/register', json={
+        'name': 'Long Password', 'email': 'long@example.com', 'password': '🙂' * 20,
+    })
+    assert response.status_code == 422
+
+
+def test_accounts_cannot_read_each_others_checkins(client, account):
+    client.post('/api/v1/checkins', headers=account['headers'], json={
+        'mood': 3, 'stress': 5, 'sleep_hours': 8, 'active_minutes': 30,
+    })
+    other = client.post('/api/v1/auth/register', json={
+        'name': 'Other User', 'email': 'other@example.com', 'password': 'strongpass456',
+    }).json()
+    response = client.get('/api/v1/checkins', headers={'Authorization': f"Bearer {other['access_token']}"})
+    assert response.status_code == 200
+    assert response.json() == []

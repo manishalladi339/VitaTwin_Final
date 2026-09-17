@@ -62,13 +62,17 @@ async def coach(payload: CoachIn, user_id: str = Depends(current_user_id)):
             "Recommend professional care when symptoms or persistent concerns are mentioned.",
         ],
     }
-    async with httpx.AsyncClient(timeout=30) as client:
-        response = await client.post(
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
             f"{settings.openai_api_base.rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {settings.openai_api_key}"},
             json={"model": settings.openai_model, "messages": [{"role": "system", "content": "You are VitaTwin, a cautious wellness coach."}, {"role": "user", "content": json.dumps(prompt)}]},
-        )
-    if response.status_code >= 400:
-        raise HTTPException(status_code=502, detail="The AI coach is temporarily unavailable")
-    answer = response.json()["choices"][0]["message"]["content"]
+            )
+        response.raise_for_status()
+        answer = response.json()["choices"][0]["message"]["content"]
+        if not isinstance(answer, str) or not answer.strip():
+            raise ValueError("Empty coach response")
+    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
+        raise HTTPException(status_code=502, detail="The AI coach is temporarily unavailable") from exc
     return {"answer": answer, "source": settings.openai_model, "disclaimer": "General wellness information only; consult a qualified professional for medical advice."}
